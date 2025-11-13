@@ -1,4 +1,24 @@
-# ======================================
+# =============================
+# ALEIBA Multi-Platform Influencer Scraper for Render
+# =============================
+
+import gspread
+import re, requests, time
+from bs4 import BeautifulSoup
+from oauth2client.service_account import ServiceAccountCredentials
+import dns.resolver
+from validate_email import validate_email
+import os, json
+
+# STEP 1: Load Google service account from Render secret
+GOOGLE_JSON = os.environ.get("GOOGLE_SERVICE_JSON")
+if not GOOGLE_JSON:
+    raise Exception("Please set GOOGLE_SERVICE_JSON as an environment variable in Render")
+
+service_account_info = json.loads(GOOGLE_JSON)
+scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+creds = ServiceAccountCredentials.from_json_keyfile_dict(service_account_info, scope)
+client = gspread.authorize(creds)# ======================================
 # ALEIBA Influencer Scraper v10.0 (Render-ready)
 # Instagram + TikTok + Email verification
 # ======================================
@@ -117,3 +137,76 @@ def run_scraper():
 # ======================================
 if __name__ == "__main__":
     run_scraper()
+
+# STEP 2: Open Google Sheets
+HASHTAG_SHEET = "Aleiba_Hashtags"
+INFLUENCERS_SHEET = "Aleiba_Influencers"
+
+sheet_hashtags = client.open(HASHTAG_SHEET).sheet1
+sheet_influencers = client.open(INFLUENCERS_SHEET).sheet1
+
+print("✅ Connected to Google Sheets")
+
+# STEP 3: Helper functions
+def verify_email_address(email):
+    try:
+        domain = email.split('@')[1]
+        dns.resolver.resolve(domain, 'MX')
+        return True
+    except:
+        return False
+
+def scrape_emails_from_url(url):
+    emails_found = set()
+    try:
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        response = requests.get(url, headers=headers, timeout=10)
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.text, 'html.parser')
+            text = soup.get_text()
+            possible_emails = re.findall(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", text)
+            for email in possible_emails:
+                if verify_email_address(email):
+                    emails_found.add(email)
+    except Exception as e:
+        print(f"❌ Error scraping {url}: {e}")
+    return list(emails_found)
+
+def existing_emails():
+    try:
+        emails = sheet_influencers.col_values(2)
+        return set(e.strip().lower() for e in emails if e)
+    except:
+        return set()
+
+# STEP 4: Main scraper
+def run_scraper(min_followers=5000):
+    hashtags = sheet_hashtags.col_values(1)[1:]
+    print(f"🔍 Found {len(hashtags)} hashtags/URLs to process.")
+    old_emails = existing_emails()
+    new_count = 0
+
+    for item in hashtags:
+        url = item.strip()
+        if not url:
+            continue
+        if not url.startswith("http"):
+            url = "https://www.instagram.com/explore/tags/" + url.strip("#")
+        print(f"⏳ Scraping: {url}")
+
+        emails = scrape_emails_from_url(url)
+        for email in emails:
+            if email.lower() not in old_emails:
+                sheet_influencers.append_row([url, email, "Verified ✅"])
+                old_emails.add(email.lower())
+                new_count += 1
+                print(f"✅ Added new verified email: {email}")
+            else:
+                print(f"⚠️ Skipped duplicate: {email}")
+
+        time.sleep(2)
+
+    print(f"\n🎉 Done! Added {new_count} new verified influencer emails.")
+
+# STEP 5: Run scraper
+run_scraper()
