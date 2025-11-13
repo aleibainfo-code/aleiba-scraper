@@ -1,0 +1,6 @@
+gspread
+oauth2client
+requests
+beautifulsoup4
+validate_email
+dnspython
