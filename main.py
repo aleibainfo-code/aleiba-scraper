@@ -5,12 +5,9 @@ from concurrent.futures import ThreadPoolExecutor
 
 # ========================= CONFIG =========================
 GAS_WEBHOOK_URL = os.environ.get("GAS_WEBHOOK_URL")  # Read from Render env
-HASHTAGS = [
-    "luxurytravel","luxuryvacation","luxuryresort","luxurygetaway","luxuryholidays",
-    "luxurytraveler","luxuryretreat","luxuryexperiences","luxuryescape","luxurytour",
-    "luxurylifestyle","luxurylife","luxuryworld","highendliving","lifestyleofluxury",
-    "luxurymindset","eliteclub","luxurymagazine","forbeslife","millionairelifestyle",
-    # ... add remaining hashtags up to 200
+HASHTAGS = ["luxurytravel", "luxuryvacation", "luxuryresort", "luxurygetaway", "luxuryholidays"]
+LIMIT = 50  # scrape 50 influencers per hashtag for testing
+
 ]
 LIMIT = 10000             # Total influencers to scrape
 CHUNK_SIZE = 50           # Posts per request
