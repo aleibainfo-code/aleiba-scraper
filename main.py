@@ -5,6 +5,8 @@ from concurrent.futures import ThreadPoolExecutor
 
 # ========================= CONFIG =========================
 GAS_WEBHOOK_URL = os.environ.get("GAS_WEBHOOK_URL")  # Read from Render env
+if not GAS_WEBHOOK_URL:
+    raise RuntimeError("GAS_WEBHOOK_URL is not set! Check Render environment variables.")
 
 HASHTAGS = [
     "luxurytravel",
@@ -14,36 +16,41 @@ HASHTAGS = [
     "luxuryholidays"
 ]
 
-LIMIT = 50  # scrape 50 influencers per hashtag for testing
-CHUNK_SIZE = 50           # Posts per request
-CONCURRENCY = 5           # Number of parallel threads
+LIMIT = 50           # influencers per hashtag for testing
+CHUNK_SIZE = 10      # smaller batches for faster response
+CONCURRENCY = 5      # parallel threads
 MIN_FOLLOWERS = 10000
+RETRIES = 3          # retry attempts for posting
 
 # ========================= SIMULATED SCRAPER =========================
 def scrape_hashtag(hashtag, offset=0, limit=CHUNK_SIZE):
     """
-    Replace this function with real scraping logic (Instagram/TikTok)
+    Simulate scraping influencers.
     Returns list of dicts with: username, followers, email, post_url, hashtag
     """
     influencers = []
     for i in range(limit):
         influencers.append({
             "username": f"{hashtag}_user_{offset + i}",
-            "followers": MIN_FOLLOWERS + (offset + i)*10,
+            "followers": MIN_FOLLOWERS + (offset + i) * 10,
             "email": f"{hashtag}_user_{offset + i}@example.com",
             "post_url": f"https://socialmedia.com/{hashtag}_user_{offset + i}",
             "hashtag": hashtag
         })
     return influencers
 
-# ========================= POST TO SHEET =========================
-def post_to_sheet(batch):
-    try:
-        res = requests.post(GAS_WEBHOOK_URL, json=batch, timeout=30)
-        res.raise_for_status()
-        print(f"Posted {len(batch)} rows to Sheet")
-    except Exception as e:
-        print(f"Error posting to Sheet: {e}")
+# ========================= POST TO SHEET WITH RETRIES =========================
+def post_to_sheet(batch, retries=RETRIES):
+    for attempt in range(retries):
+        try:
+            res = requests.post(GAS_WEBHOOK_URL, json=batch, timeout=30)
+            res.raise_for_status()
+            print(f"Posted {len(batch)} rows to Sheet")
+            return
+        except Exception as e:
+            print(f"Attempt {attempt+1} failed: {e}")
+            time.sleep(2)  # wait before retry
+    print(f"Failed to post {len(batch)} rows after {retries} attempts")
 
 # ========================= PROCESS SINGLE HASHTAG =========================
 def process_hashtag(hashtag):
@@ -56,7 +63,7 @@ def process_hashtag(hashtag):
         post_to_sheet(batch)
         total_scraped += len(batch)
         offset += len(batch)
-        time.sleep(1)  # Rate limit
+        time.sleep(2)  # rate limiting between batches
 
 # ========================= MAIN =========================
 def main():
@@ -67,5 +74,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
