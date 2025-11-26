@@ -5,11 +5,16 @@ from concurrent.futures import ThreadPoolExecutor
 
 # ========================= CONFIG =========================
 GAS_WEBHOOK_URL = os.environ.get("GAS_WEBHOOK_URL")  # Read from Render env
-HASHTAGS = ["luxurytravel", "luxuryvacation", "luxuryresort", "luxurygetaway", "luxuryholidays"]
-LIMIT = 50  # scrape 50 influencers per hashtag for testing
 
+HASHTAGS = [
+    "luxurytravel",
+    "luxuryvacation",
+    "luxuryresort",
+    "luxurygetaway",
+    "luxuryholidays"
 ]
-LIMIT = 10000             # Total influencers to scrape
+
+LIMIT = 50  # scrape 50 influencers per hashtag for testing
 CHUNK_SIZE = 50           # Posts per request
 CONCURRENCY = 5           # Number of parallel threads
 MIN_FOLLOWERS = 10000
@@ -62,4 +67,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
